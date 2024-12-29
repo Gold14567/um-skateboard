@@ -1,27 +1,28 @@
-name "jim-skateboard"
-author "Jimathy"
-version "2.0.1"
-description "Electric Skateboard Script By Jimathy"
-fx_version "cerulean"
 game "gta5"
-lua54 'yes'
+fx_version "cerulean"
+name "um-skateboard"
+version "0.0.1"
+description "fork jimathy skateboards"
 
 shared_scripts {
-    'locales/*.lua',
-    'config.lua',
-    -- Required core scripts
     '@ox_lib/init.lua',
-    '@ox_core/imports/client.lua',
-    '@es_extended/imports.lua',
-    '@qbx_core/modules/playerdata.lua',
-
-    --Jim Bridge
-    '@jim_bridge/exports.lua',
-    '@jim_bridge/functions.lua',
-    '@jim_bridge/wrapper.lua',
-    '@jim_bridge/crafting.lua',
+    'shared/config.lua'
 }
-client_script 'client.lua'
-server_script 'server.lua'
 
-dependancy 'jim_bridge'
+files {
+    'shared/controls.lua',
+    'shared/handling.lua'
+}
+
+client_scripts {
+    'bridge/target/*.lua',
+    'utils.lua',
+    'main/client.lua'
+}
+
+server_scripts {
+    'bridge/framework/*.lua',
+    'main/server.lua',
+}
+
+lua54 'yes'
