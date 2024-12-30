@@ -1,7 +1,6 @@
 local skateboard = {}
 local Dir = {}
 local Attached = nil
-local overSpeed = false
 local spawned = false
 
 local config = require 'shared.config'
@@ -33,7 +32,7 @@ local function makeFakeSkateboard(ped, remove) -- The animation for picking up a
 	Wait(900)
 	DestroyProp(prop)
 end
----- 176
+
 local function pickupSkateboard()
 	if not DoesEntityExist(skateboard.Bike) and not Attached then return end
 
@@ -61,9 +60,10 @@ local function enterSkateboard()
 	CreateThread(function()
 		while Attached do
 			StopCurrentPlayingAmbientSpeech(skateboard.Driver)
-			overSpeed = (GetEntitySpeed(skateboard.Bike) * 3.6) > 90
-			local rotation = GetEntityRotation(skateboard.Bike)
-			if (-40.0 < rotation.x and rotation.x > 40.0) or (-40.0 < rotation.y and rotation.y > 40.0) then
+
+			local speed = math.ceil(GetEntitySpeed(skateboard.Bike) * 3.6)
+
+			if HasEntityCollidedWithAnything(skateboard.Bike) and speed >= config.ragdollSpeed then
 				DetachEntity(cache.ped, false, false)
 				TaskVehicleTempAction(skateboard.Driver, skateboard.Bike, 1, 1)
 				Attached = false
@@ -95,6 +95,14 @@ local function enterSkateboard()
 	end)
 end
 
+local function mergeControls()
+	local result = {}
+	for _, v in pairs(controls) do
+		result[#result + 1] = string.format("%s: **%s**", v.name, v.key)
+	end
+	return table.concat(result, "  \n")
+end
+
 local function addTargetSkateEntity()
 	local options = {
 		{
@@ -109,6 +117,18 @@ local function addTargetSkateEntity()
 			label = config.lang.pickupSkateBoard,
 			board = skateboard.Skate
 		},
+		{
+			action = function()
+				lib.alertDialog({
+					header = config.lang.usageSkateBoard,
+					content = mergeControls(),
+					centered = true,
+					cancel = false
+				})
+			end,
+			icon = string.format('fas fa-%s', config.icons.usageSkateBoard),
+			label = config.lang.usageSkateBoard,
+		},
 	}
 
 	AddLocalCreateEntityTarget(skateboard.Skate, options, config.targetDistance)
@@ -118,8 +138,6 @@ local function addTargetSkateEntity()
 	DebugNotify({ "addTargetSkateEntity", skateboard.Skate, skateboard.Driver, skateboard.Bike })
 end
 
-
---- 1- First work event to be called
 RegisterNetEvent("um-skateboard:spawn:skateboard", function()
 	if GetInvokingResource() ~= nil then return end
 
@@ -130,7 +148,7 @@ RegisterNetEvent("um-skateboard:spawn:skateboard", function()
 	TriggerServerEvent("um-skateboard:server:placeSkateboard")
 
 	local pedCoords = GetOffsetFromEntityInWorldCoords(ped, 0.0, 0.5, -40.5)
-	skateboard.Bike = CreateBike("triBike3", vec4(pedCoords.x, pedCoords.y, pedCoords.z, 0.0))
+	skateboard.Bike = CreateBike(config.baseVehicle, vec4(pedCoords.x, pedCoords.y, pedCoords.z, 0.0))
 	skateboard.Skate = CreateSkateProp({ prop = config.prop, coords = vec4(pedCoords.x, pedCoords.y, pedCoords.z, 0.0) },
 		true,
 		true)
@@ -201,7 +219,7 @@ RegisterKeyMapping('+skateforward', controls.up.name, 'keyboard', controls.up.ke
 RegisterCommand('+skateforward', function()
 	if not Attached then return end
 
-	if overSpeed or Dir.forward then return end
+	if Dir.forward then return end
 
 	CreateThread(function()
 		Dir.forward = true
@@ -220,11 +238,11 @@ RegisterCommand('-skateforward', function()
 	TaskVehicleTempAction(skateboard.Driver, skateboard.Bike, 1, 1)
 end)
 
-RegisterKeyMapping('+skatebackward', 'Skateboard: Backward', 'keyboard', 'DOWN')
+RegisterKeyMapping('+skatebackward', controls.down.name, 'keyboard', controls.down.key)
 RegisterCommand('+skatebackward', function()
 	if not Attached then return end
 
-	if overSpeed or Dir.backward then return end
+	if Dir.backward then return end
 
 	CreateThread(function()
 		Dir.backward = true
@@ -242,13 +260,10 @@ RegisterCommand('-skatebackward', function()
 	TaskVehicleTempAction(skateboard.Driver, skateboard.Bike, 1, 1)
 end)
 
-RegisterKeyMapping('+skateleft', 'Skateboard: Left', 'keyboard', 'LEFT')
+RegisterKeyMapping('+skateleft', controls.left.name, 'keyboard', controls.left.key)
 RegisterCommand('+skateleft', function()
 	if not Attached then return end
-
-	if not overSpeed then
-		Dir.left = true
-	end
+	Dir.left = true
 end)
 RegisterCommand('-skateleft', function()
 	if not Attached then return end
@@ -256,13 +271,10 @@ RegisterCommand('-skateleft', function()
 	Dir.left = nil
 end)
 
-RegisterKeyMapping('+skateright', 'Skateboard: Right', 'keyboard', 'RIGHT')
+RegisterKeyMapping('+skateright', controls.right.name, 'keyboard', controls.right.key)
 RegisterCommand('+skateright', function()
 	if not Attached then return end
-
-	if not overSpeed then
-		Dir.right = true
-	end
+	Dir.right = true
 end)
 RegisterCommand('-skateright', function()
 	if not Attached then return end
@@ -270,7 +282,7 @@ RegisterCommand('-skateright', function()
 	Dir.right = nil
 end)
 
-RegisterKeyMapping('skatejump', 'Skateboard: Jump', 'keyboard', 'SPACE')
+RegisterKeyMapping('skatejump', controls.jump.name, 'keyboard', controls.jump.key)
 RegisterCommand('skatejump', function()
 	if not Attached then return end
 	if IsEntityInAir(skateboard.Bike) then return end
@@ -278,6 +290,7 @@ RegisterCommand('skatejump', function()
 	local vel = GetEntityVelocity(skateboard.Bike)
 	local duration = 0
 	local boost = 0
+	local defaultBoost = config.jumpBoost
 
 	lib.playAnim(cache.ped, "move_crouch_proto", "idle_intro")
 
@@ -286,8 +299,8 @@ RegisterCommand('skatejump', function()
 		duration = duration + 10.0
 	end
 
-	boost = 6.0 * duration / 250.0
-	if boost > 6.0 then boost = 6.0 end
+	boost = defaultBoost * duration / 250.0
+	if boost > defaultBoost then boost = defaultBoost end
 
 	SetEntityVelocity(skateboard.Bike, vel.x, vel.y, vel.z + boost)
 

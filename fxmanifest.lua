@@ -1,7 +1,7 @@
 game "gta5"
 fx_version "cerulean"
 name "um-skateboard"
-version "0.0.1"
+version "0.0.3"
 description "fork jimathy skateboards"
 
 shared_scripts {
@@ -16,7 +16,7 @@ files {
 
 client_scripts {
     'bridge/target/*.lua',
-    'utils.lua',
+    'main/utils.lua',
     'main/client.lua'
 }
 

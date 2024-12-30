@@ -1,4 +1,4 @@
--- local debugStatus = require('config').debug
+local debugStatus = require('shared.config').debug
 
 function CreateSkateProp(data, freeze, synced)
     lib.requestModel(data.prop)
@@ -40,11 +40,12 @@ function ClearAll(skateboard)
     DeleteVehicle(skateboard.Bike)
     DestroyProp(skateboard.Skate)
     DeletePed(skateboard.Driver)
+    ClearPedTasks(cache.ped)
 
     DebugNotify('Skateboard table clear all')
 end
 
-function DebugNotify(text)
-    -- if not debugStatus then return end
-    lib.print.info(text)
+function DebugNotify(...)
+    if not debugStatus then return end
+    lib.print.info(...)
 end

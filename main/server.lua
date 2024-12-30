@@ -1,6 +1,8 @@
 local config = require 'shared.config'
 
 local function debugNotify(...)
+    if not config.debug then return end
+
     lib.print.info(...)
 end
 
