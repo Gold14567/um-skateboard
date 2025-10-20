@@ -10,7 +10,7 @@ function AddItem(src)
     xPlayer.addInventoryItem(config.item, 1)
 end
 
-function DeleteItem(src)
+function RemoveItem(src)
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return end
     xPlayer.removeInventoryItem(config.item, 1)
