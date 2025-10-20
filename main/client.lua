@@ -2,6 +2,7 @@ local skateboard = {}
 local Dir = {}
 local Attached = nil
 local spawned = false
+local CanJumpAgain = true
 
 local config = require 'shared.config'
 local controls = require 'shared.controls'
@@ -50,7 +51,7 @@ end
 local function enterSkateboard()
 	if not spawned and not DoesEntityExist(skateboard.Skate) then return end
 
-	AttachEntityToEntity(cache.ped, skateboard.Bike, 20, 0.0, 0.15, 0.05, 0.0, 0.0, -15.0, true, true, false, true, 1,
+	AttachEntityToEntity(cache.ped, skateboard.Bike, 20, 0.0, 0.25, 0.05, 0.0, 0.0, -15.0, true, true, false, true, 1,
 		true)
 	SetEntityCollision(cache.ped, true, true)
 	Attached = true
@@ -284,8 +285,8 @@ end)
 
 RegisterKeyMapping('skatejump', controls.jump.name, 'keyboard', controls.jump.key)
 RegisterCommand('skatejump', function()
-	if not Attached then return end
-	if IsEntityInAir(skateboard.Bike) then return end
+	if IsEntityInAir(skateboard.Bike) or not Attached or not CanJumpAgain then return end
+	CanJumpAgain = false
 
 	local vel = GetEntityVelocity(skateboard.Bike)
 	local duration = 0
@@ -307,6 +308,10 @@ RegisterCommand('skatejump', function()
 	StopAnimTask(cache.ped, "move_crouch_proto", "idle_intro", 0.5)
 
 	lib.playAnim(cache.ped, "move_strafe@stealth", "idle", nil, -4.0, nil, 9)
+
+	Citizen.SetTimeout(2000, function()
+		CanJumpAgain = true
+	end)
 end)
 
 AddEventHandler('onResourceStop', function(resource)
